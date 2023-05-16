@@ -27,7 +27,7 @@ def merge_all_txt(rootpath,savepath="./df.csv"):
     print(f"All subdirs: {subdirs}")
     th_list = sorted([str(d.split("_")[1].replace(".txt","")) for d in os.listdir(os.path.join(rootpath,subdirs[0])) if d.startswith("TP_")])
     print(f"All th: {th_list}")
-    column_names = ["Threshod", "Accuracy", "Recall", "Precision", "F1-Score", "TNR", "TPR", "FPR", "FNR"]
+    column_names = ["Threshod", "Accuracy", "Recall", "Precision", "F1-Score", "TNR", "TPR", "FPR", "FNR","TN","TP","FN","FP","Total"]
     results_df = pd.DataFrame(columns=column_names)
     for th  in th_list:
         # 合并处理所有阈值的结果
@@ -111,7 +111,7 @@ def merge_all_txt(rootpath,savepath="./df.csv"):
         fpr = fp / (tn + fp)
         fnr = fn / (tp + fn)
 
-        result = {"Threshod": float(th), "Accuracy": accuracy, "Recall": recall, "Precision": precision, "F1-Score": f1_score, "TNR": tnr, "TPR": tpr, "FPR": fpr, "FNR": fnr}
+        result = {"Threshod": float(th), "Accuracy": accuracy, "Recall": recall, "Precision": precision, "F1-Score": f1_score, "TNR": tnr, "TPR": tpr, "FPR": fpr, "FNR": fnr, "TN": tn, "TP": tp, "FN": fn, "FP": fp, "Total": tn + tp + fn + fp}
         results_df = results_df.append(result, ignore_index=True)
     if savepath:
         results_df.to_csv(savepath, index=False)
