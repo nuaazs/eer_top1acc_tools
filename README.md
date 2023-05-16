@@ -29,6 +29,26 @@
 3. 对于声纹特征目录B `data/emb_b` 进行同样的操作获得`vector_b.txt`和`vector_b.bin`。
 4. 二进制文件结果即说话人ID文件分别保存在`data/input_a`及`data/input_b`中。
 
+### 步骤三（多进程）生成二进制文件 💻
+如果声纹特征目录下npy文件过多，可利用多线程
+```shell
+rm -rf data/temp_a/*
+rm -rf data/temp_b/*
+
+python utils/get_vector.py --save_tiny_folder data/temp_a --thread 20
+python utils/merge_vector.py --fold_path data/temp_a --output vector_a_all # bin:data/temp_a/vector_a_all.bin  txt:data/temp_a/vector_a_all.txt
+# mv to input
+mv data/temp_a/vector_a_all.txt data/input_a
+mv data/temp_a/vector_a_all.bin data/input_a
+
+python utils/get_vector.py --save_tiny_folder data/temp_b --thread 20 #--fold_path data/emb_b 
+python utils/merge_vector.py --fold_path data/temp_b --output vector_b_all # bin:data/temp_b/vector_b_all.bin  txt:data/temp_b/vector_b_all.txt
+# mv to input
+mv data/temp_b/vector_b_all.txt data/input_b
+mv data/temp_b/vector_b_all.bin data/input_b
+
+```
+
 ### 步骤四（可选）：加入埋点数据 🔎
 `data/input_a`及`data/input_b`中保存的bin及txt文件利用文件名一一对应。可放入多组。
 例如：
@@ -43,15 +63,15 @@ data/input_a/vecotr_a_add.txt
 
 ### 步骤五：文件分割 📑
 由于所有待测文件，可将原始`vector_a.bin`进行分割，以便于进行后续并行碰撞。
-首先将`data/input_a`中的所有文件对进行合并，生成`vector_a_all.bin`及`vector_a_all.txt`。
+首先将`data/input_a`中的所有文件对进行合并，生成`vector_a_final.bin`及`vector_a_final.txt`。
 ```shell
-python utils/merge_vector.py --fold_path data/input_a --output vector_a_all
-python utils/merge_vector.py --fold_path data/input_b --output vector_b_all
+python utils/merge_vector.py --fold_path data/input_a --output vector_a_final
+python utils/merge_vector.py --fold_path data/input_b --output vector_b_final
 ```
 
 例如将其分割为64份，并保存在`vector_a_data`目录下：
 ```shell
-python utils/split_vector.py --raw_bin_path data/input_a/vector_a_all.bin --raw_txt_path data/input_a/vector_a_all.txt --number 64 --save_folder data/input_a/vector_a_all_split_data
+python utils/split_vector.py --raw_bin_path data/input_a/vector_a_final.bin --raw_txt_path data/input_a/vector_a_final.txt --number 64 --save_folder data/input_a/vector_a_all_split_data
 ```
 
 
@@ -74,22 +94,25 @@ utils/top1 $a_len $b_len $EMB_SIZE $bin_path $b_bin_path $txt_path $b_txt_path $
 
 计算所有子集的碰撞得分：
 ```shell
-b_txt_path="data/input_a/vector_b_all.txt"
-b_bin_path="data/input_a/vector_b_all.bin"
+b_txt_path="data/input_b/vector_b_final.txt"
+b_bin_path="data/input_b/vector_b_final.bin"
 calc_thread=64 # 64个子集
 a_split_dir="data/input_a/vector_a_all_split_data"
 b_len=$(cat $b_txt_path | wc -l)
+EMB_SIZE=192
 for file_num in $(seq 0 $((calc_thread-1)))
 do
     echo "file_num: $file_num"
     # 获取txt文件和bin文件地址
-    txt_path=$a_split_dir/id_$file_num.txt
-    bin_path=$a_split_dir/vector_$file_num.bin
+    txt_path=${a_split_dir}/id_${file_num}.txt
+    bin_path=${a_split_dir}/vector_${file_num}.bin
     # a的长度为txt文件的行数
-    a_len=$(cat $txt_path | wc -l)
+    a_len=$(cat ${txt_path} | wc -l)
+    # echo "utils/top1 $a_len $b_len $EMB_SIZE $bin_path $b_bin_path $txt_path $b_txt_path $a_split_dir/$file_num.score"
     utils/top1 $a_len $b_len $EMB_SIZE $bin_path $b_bin_path $txt_path $b_txt_path $a_split_dir/$file_num.score &
 done
 wait
+echo "Done"
 ```
 
 ### 步骤七：统计TP/TN/FP/FN 📊
@@ -106,6 +129,7 @@ Usage: utils/top1acc score_file_path th_start th_stop th_step save_dir
 
 ```shell
 a_split_dir="data/input_a/vector_a_all_split_data"
+calc_thread=64
 for file_num in $(seq 0 $((calc_thread-1)))
 do
     utils/top1acc ${a_split_dir}/${file_num}.score 0.1 0.9 0.05 ${a_split_dir}/${file_num}_results &
@@ -119,5 +143,6 @@ echo "Done"
 最后利用`merge_top1_acc_result.py`对结果进行合并，获得`vector_a.bin`与`vector_b.bin`的完整测试结果。
 ```shell
 a_split_dir="data/input_a/vector_a_all_split_data"
-python utils/merge_top1_acc_result.py --root_path $a_split_dir --save_path $a_csv_path
+a_csv_path="./result.csv"
+python utils/merge_top1_acc_result.py --root_path $a_split_dir --save_path data/result.csv
 ```

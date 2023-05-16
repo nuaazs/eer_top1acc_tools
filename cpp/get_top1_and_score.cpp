@@ -61,7 +61,7 @@ int main(int argc, char* argv[])
     }
     FILE* fp = fopen(vectorDB_cjsd_path, "rb");
     if(!fp) {
-        std::cout << "open file vectorDB.bin cjsd failed.\n";
+        std::cout << "open file a.bin: "<<vectorDB_cjsd_path<<" cjsd failed.\n";
         return -1;
     }
     for (int i = 0; i < VOICENUM_CJSD; i++) {
@@ -82,7 +82,7 @@ int main(int argc, char* argv[])
     std::string id_list_cjsd[VOICENUM_CJSD];
     FILE* fp1 = fopen(cjsd_id_list_path, "r");
     if(!fp1) {
-        std::cout << "open file vector.txt failed.\n";
+        std::cout << "open file a.txt: " << cjsd_id_list_path << "failed.\n";
         return -1;
     }
     for(int i = 0; i < VOICENUM_CJSD; i++) {
@@ -100,7 +100,7 @@ int main(int argc, char* argv[])
     }
     FILE* fp2 = fopen(vectorDB_black_path, "rb");
     if(!fp2) {
-        std::cout << "open file vectorDB.bin black failed.\n";
+        std::cout << "open file b.bin: " << vectorDB_black_path << " failed.\n";
         return -1;
     }
     fread(pDB_black, sizeof(DType), VOICENUM_BLACK*FEATSIZE, fp2);
@@ -108,7 +108,7 @@ int main(int argc, char* argv[])
     std::string id_list_black[VOICENUM_BLACK];
     FILE* fp4 = fopen(black_id_list_path, "r");
     if(!fp4) {
-        std::cout << "open file vector.txt failed.\n";
+        std::cout << "open file b.txt: "<< black_id_list_path <<" failed.\n";
         return -1;
     }
     for(int i = 0; i < VOICENUM_BLACK; i++) {
@@ -125,7 +125,7 @@ int main(int argc, char* argv[])
     // Write result to file
     FILE* fp3 = fopen(output_path, "w");
     if(!fp3) {
-        std::cout << "open file result.txt failed.\n";
+        std::cout << "open file output.txt: "<< output_path <<" failed.\n";
         return -1;
     }
     std::unordered_map<int, std::pair<std::string, float>> top_similarities;
