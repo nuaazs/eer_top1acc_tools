@@ -5,7 +5,8 @@
 
 import os
 import pandas as pd
-
+from tqdm import tqdm
+import matplotlib.pyplot as plt
 import argparse
 parser = argparse.ArgumentParser(description='')
 parser.add_argument('--root_path', type=str, default='./a_split',help='')
@@ -113,13 +114,75 @@ def merge_all_txt(rootpath,savepath="./df.csv"):
         fpr = fp / (tn + fp)
         fnr = fn / (tp + fn)
 
-        result = {"Threshod": float(th), "Accuracy": accuracy, "Recall": recall, "Precision": precision, "F1-Score": f1_score, "TNR": tnr, "TPR": tpr, "FPR": fpr, "FNR": fnr}
-        results_df = results_df.append(result, ignore_index=True)
+        result = {"Threshod": float(th), 
+                  "Accuracy": accuracy, 
+                  "Recall": recall, 
+                  "Precision": precision, 
+                  "F1-Score": f1_score, 
+                  "TNR": tnr, 
+                  "TPR": tpr, 
+                  "FPR": fpr, 
+                  "FNR": fnr, 
+                  "TP":tp, 
+                  "TN":tn, 
+                  "FP":fp, 
+                  "FN":fn}
+        # results_df = results_df.append(result, ignore_index=True)
+        result = pd.DataFrame(result, index=[0])
+        results_df = pd.concat([results_df, result], ignore_index=True)
+        # concat the result to results_df
+        # results_df = pd.concat([results_df, pd.DataFrame(result, index=[0])], ignore_index=True)
+        
     if savepath:
         results_df.to_csv(savepath, index=False)
     return results_df
 
 
+def plot_eer_and_roc(df,eer_save_path="./eer.png",roc_save_path="./roc.png"):
+    # Calculate EER and plot the ROC curve
+    fprs, tprs, thresholds = [], [], []
+    for index, row in df.iterrows():
+        fprs.append(row['FPR'])
+        tprs.append(row['TPR'])
+        thresholds.append(row['Threshod'])
+    eer_threshold = None
+    eer = 1.0
+    for fpr, tpr, threshold in zip(fprs, tprs, thresholds):
+        if abs(fpr - (1-tpr)) < eer:
+            eer = abs(fpr - (1-tpr))
+            eer_threshold = threshold
+    plt.figure()
+    lw = 2
+    plt.plot(fprs, tprs, color='darkorange',
+             lw=lw, label='ROC curve (AUC={:.4f})'.format(df['Accuracy'].mean()))
+    plt.plot([0, 1], [0, 1], color='navy', lw=lw, linestyle='--')
+    plt.xlim([0.0, 1.05])
+    plt.ylim([0.0, 1.05])
+    plt.xlabel('False Positive Rate')
+    plt.ylabel('True Positive Rate')
+    plt.title('Receiver operating characteristic (ROC) Curve')
+    plt.legend(loc="lower right")
+    plt.savefig(roc_save_path)
+    plt.show()
+
+    # Plot the EER point
+    plt.figure()
+    lw = 2
+    plt.plot(fprs, tprs, color='darkorange',
+             lw=lw, label='ROC curve (AUC={:.4f})'.format(df['Accuracy'].mean()))
+    plt.scatter(eer_threshold, 1-eer, s=100, c='red', marker='x', label='EER (Threshold={:.4f})'.format(eer_threshold))
+    plt.plot([0, 1], [0, 1], color='navy', lw=lw, linestyle='--')
+    plt.xlim([0.0, 1.05])
+    plt.ylim([0.0, 1.05])
+    plt.xlabel('False Positive Rate')
+    plt.ylabel('True Positive Rate')
+    plt.title('Equal Error Rate (EER) Curve')
+    plt.legend(loc="lower right")
+    plt.savefig(eer_save_path)
+    plt.show()
+
+
 if __name__ == '__main__':
     # python merge_top1_acc_result.py --root_path ./a_split --save_path ./a_split.csv
-    merge_all_txt(args.root_path, args.save_path) 
+    merge_all_txt(args.root_path, args.save_path)
+    plot_eer_and_roc(pd.read_csv(args.save_path),eer_save_path="./eer.png",roc_save_path="./roc.png")

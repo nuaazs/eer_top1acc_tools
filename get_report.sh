@@ -20,9 +20,11 @@ b_txt_path=/home/zhaosheng/get_cjsd_embeddings/vector.txt
 
 a_split_dir=/home/zhaosheng/get_cjsd_embeddings/a_split
 b_split_dir=/home/zhaosheng/get_cjsd_embeddings/b_split
+a_csv_path=/home/zhaosheng/get_cjsd_embeddings/a_split.csv
 
 rm -rf $a_split_dir
 rm -rf $b_split_dir
+
 # # 1. 对数据A进行预处理
 # python get_vad.py --fold_path $a_dir --dst_path $a_vad_dir --thread $api_thread
 # # 2. 对数据B进行预处理
@@ -72,7 +74,7 @@ wait
 echo "Done"
 
 # Merge all results
-python merge_top1_acc_result.py --root_path a_split_dir --save_path ./a_split.csv
+python merge_top1_acc_result.py --root_path $a_split_dir --save_path $a_csv_path
 
 
 
