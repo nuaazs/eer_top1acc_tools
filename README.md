@@ -45,13 +45,13 @@ data/input_a/vecotr_a_add.txt
 由于所有待测文件，可将原始`vector_a.bin`进行分割，以便于进行后续并行碰撞。
 首先将`data/input_a`中的所有文件对进行合并，生成`vector_a_all.bin`及`vector_a_all.txt`。
 ```shell
-python merge_vector.py --fold_path data/input_a --output vector_a_all
-python merge_vector.py --fold_path data/input_b --output vector_b_all
+python utils/merge_vector.py --fold_path data/input_a --output vector_a_all
+python utils/merge_vector.py --fold_path data/input_b --output vector_b_all
 ```
 
 例如将其分割为64份，并保存在`vector_a_data`目录下：
 ```shell
-python split_vector.py --raw_bin_path data/input_a/vector_a_all.bin --raw_txt_path data/input_a/vector_a_all.txt --number 64 --save_folder data/input_a/vector_a_all_split_data
+python utils/split_vector.py --raw_bin_path data/input_a/vector_a_all.bin --raw_txt_path data/input_a/vector_a_all.txt --number 64 --save_folder data/input_a/vector_a_all_split_data
 ```
 
 
@@ -69,7 +69,7 @@ python split_vector.py --raw_bin_path data/input_a/vector_a_all.bin --raw_txt_pa
 使用示例：
 ```shell
 # Usage: program_name NUM_CJSD NUM_BLACK EMB_SIZE DB1 DB2 ID1 ID2 OUTPUT_PATH
-./top1 $a_len $b_len $EMB_SIZE $bin_path $b_bin_path $txt_path $b_txt_path $a_split_dir/$file_num.score &
+utils/top1 $a_len $b_len $EMB_SIZE $bin_path $b_bin_path $txt_path $b_txt_path $a_split_dir/$file_num.score &
 ```
 
 计算所有子集的碰撞得分：
@@ -87,7 +87,7 @@ do
     bin_path=$a_split_dir/vector_$file_num.bin
     # a的长度为txt文件的行数
     a_len=$(cat $txt_path | wc -l)
-    ./top1 $a_len $b_len $EMB_SIZE $bin_path $b_bin_path $txt_path $b_txt_path $a_split_dir/$file_num.score &
+    utils/top1 $a_len $b_len $EMB_SIZE $bin_path $b_bin_path $txt_path $b_txt_path $a_split_dir/$file_num.score &
 done
 wait
 ```
@@ -101,14 +101,14 @@ wait
 5. `save_dir`:结果保存的路径
 
 ```shell
-Usage: ./top1acc score_file_path th_start th_stop th_step save_dir
+Usage: utils/top1acc score_file_path th_start th_stop th_step save_dir
 ```
 
 ```shell
 a_split_dir="data/input_a/vector_a_all_split_data"
 for file_num in $(seq 0 $((calc_thread-1)))
 do
-    ./top1acc ${a_split_dir}/${file_num}.score 0.1 0.9 0.05 ${a_split_dir}/${file_num}_results &
+    utils/top1acc ${a_split_dir}/${file_num}.score 0.1 0.9 0.05 ${a_split_dir}/${file_num}_results &
 done
 wait
 echo "Done"
@@ -119,5 +119,5 @@ echo "Done"
 最后利用`merge_top1_acc_result.py`对结果进行合并，获得`vector_a.bin`与`vector_b.bin`的完整测试结果。
 ```shell
 a_split_dir="data/input_a/vector_a_all_split_data"
-python merge_top1_acc_result.py --root_path $a_split_dir --save_path $a_csv_path
+python utils/merge_top1_acc_result.py --root_path $a_split_dir --save_path $a_csv_path
 ```
