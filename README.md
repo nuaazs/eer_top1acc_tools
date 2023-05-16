@@ -1,8 +1,8 @@
 ## Top 1 准确率计算工具 😎
 
 输入文件：
-1. 目录A：`dir_a`
-2. 目录B: `dir_b`
+1. 目录A：`data/dir_a`
+2. 目录B: `data/dir_b`
 
 输出结果：
 1. 各阈值下ACC, Recall, Precision等结果csv.
@@ -12,29 +12,46 @@
 1. 目录A `dir_a`: 待测试数据，例如293万待测试音频+100个埋点数据。
 2. 目录B `dir_b`：底库数据，例如8万黑库音频文件。
 3. 每个文件的文件名为`<spkid>_<xxxx>.wav`
+4. 在测试中认为只有`spkid`相同的属于同一说话人
 
 ### 步骤二：声纹编码 🎙️
 利用声纹服务API端口，将步骤一中的目录A及目录B中的所有文件进行编码，每个音频文件生成一个独一的特征文件，用numpy格式保存。每个numpy的shape为`(n,)`，其中`n`为特征的长度。
+也可通过其他方式获得声纹编码，利用同样格式保存。
 获得：
-1. 声纹特征目录A `emb_a`
-2. 声纹特征目录B `emb_b`
-3. 每个文件的文件名为`<spkid>_<xxxx>.npy`
+1. 声纹特征目录A `data/emb_a`
+2. 声纹特征目录B `data/emb_b`
+3. 每个文件的文件名为`<spkid>_<xxxx>.npy`, shape为`(n,)`，其中`n`为特征的长度。
 
 
 ### 步骤三：生成二进制文件 💻
-1. 将声纹特征目录A `emb_a`中的所有特征进行堆叠，生成shape为`(N,n)`的二维数组，其中`n`为特征的长度，`N`为音频个数。
+1. 将声纹特征目录A `data/emb_a`中的所有特征进行堆叠，生成shape为`(N,n)`的二维数组，其中`n`为特征的长度，`N`为音频个数。
 2. 将shape为`(N,n)`的二维数组利用二进制保存，格式为`float32`，生成`vector_a.bin`。同时生成`vector_a.txt`。`vector_a.bin`包含了所有声纹信息。`vector_b.txt`按顺序列出了所有声纹特征的说话人ID。
-3. 对于声纹特征目录B `emb_b` 进行同样的操作获得`vector_b.txt`和`vector_b.bin`。
-
+3. 对于声纹特征目录B `data/emb_b` 进行同样的操作获得`vector_b.txt`和`vector_b.bin`。
+4. 二进制文件结果即说话人ID文件分别保存在`data/input_a`及`data/input_b`中。
 
 ### 步骤四（可选）：加入埋点数据 🔎
-
+`data/input_a`及`data/input_b`中保存的bin及txt文件利用文件名一一对应。可放入多组。
+例如：
+```
+data/input_a/vector_a.bin
+data/input_a/vecotr_a.txt
+data/input_a/vector_a_add.bin
+data/input_a/vecotr_a_add.txt
+```
+其中`vector_a.bin`和`vecotr_a.txt`对应，`vector_a_add.bin`和`vector_a_add.txt`对应。在后续步骤中会被合并。
+埋点数据可通过重复步骤一至步骤三的方法生成两组bin文件和两组txt文件，分别添加到底库目录`data/input_b`和待测数据`data/input_a`中。
 
 ### 步骤五：文件分割 📑
 由于所有待测文件，可将原始`vector_a.bin`进行分割，以便于进行后续并行碰撞。
+首先将`data/input_a`中的所有文件对进行合并，生成`vector_a_all.bin`及`vector_a_all.txt`。
+```shell
+python merge_vector.py --fold_path data/input_a --output vector_a_all
+python merge_vector.py --fold_path data/input_b --output vector_b_all
+```
+
 例如将其分割为64份，并保存在`vector_a_data`目录下：
 ```shell
-python split_vector.py --raw_bin_path vector_a.bin --raw_txt_path vector_a.txt --number 64 --save_folder vector_a_data
+python split_vector.py --raw_bin_path data/input_a/vector_a_all.bin --raw_txt_path data/input_a/vector_a_all.txt --number 64 --save_folder data/input_a/vector_a_all_split_data
 ```
 
 
@@ -54,14 +71,13 @@ python split_vector.py --raw_bin_path vector_a.bin --raw_txt_path vector_a.txt -
 # Usage: program_name NUM_CJSD NUM_BLACK EMB_SIZE DB1 DB2 ID1 ID2 OUTPUT_PATH
 ./top1 $a_len $b_len $EMB_SIZE $bin_path $b_bin_path $txt_path $b_txt_path $a_split_dir/$file_num.score &
 ```
+
 计算所有子集的碰撞得分：
 ```shell
-b_len=$(cat $b_txt_path | wc -l)
-
-# 7. 计算分数
-b_txt_path="vector_b.txt"
+b_txt_path="data/input_a/vector_b_all.txt"
+b_bin_path="data/input_a/vector_b_all.bin"
 calc_thread=64 # 64个子集
-a_split_dir="vector_a_data"
+a_split_dir="data/input_a/vector_a_all_split_data"
 b_len=$(cat $b_txt_path | wc -l)
 for file_num in $(seq 0 $((calc_thread-1)))
 do
@@ -89,7 +105,7 @@ Usage: ./top1acc score_file_path th_start th_stop th_step save_dir
 ```
 
 ```shell
-echo "all process done. Now calc top1 acc"
+a_split_dir="data/input_a/vector_a_all_split_data"
 for file_num in $(seq 0 $((calc_thread-1)))
 do
     ./top1acc ${a_split_dir}/${file_num}.score 0.1 0.9 0.05 ${a_split_dir}/${file_num}_results &
@@ -102,5 +118,6 @@ echo "Done"
 步骤一至步骤七获得了每个`vector_a.bin`的子集与`vector_b.bin`的测试结果。
 最后利用`merge_top1_acc_result.py`对结果进行合并，获得`vector_a.bin`与`vector_b.bin`的完整测试结果。
 ```shell
+a_split_dir="data/input_a/vector_a_all_split_data"
 python merge_top1_acc_result.py --root_path $a_split_dir --save_path $a_csv_path
 ```
