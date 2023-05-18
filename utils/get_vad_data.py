@@ -25,29 +25,32 @@ def get_file(file_path,savepath=args.dst_path):
     """
     # ID format, 视情况修改
     filename = file_path.split('/')[-2]+"_"+file_path.split('/')[-1].split('_')[3]
+    print(file_path)
     payload={"spkid":str(filename),"only_vad":1}
     files=[
     ('wav_file',(file_path,open(file_path,'rb'),'application/octet-stream'))
     ]
     if os.path.exists(os.path.join(args.dst_path,filename+".wav")):
         return 1
-    try:
-        response = requests.request("POST", url, data=payload, files=files)
-        if "output_vad_file_path" not in response.json():
-            print("!!!!!!!!Error!!!!!!!!"*2)
-            print(response.json())
-            print("!!!!!!!!Error!!!!!!!!"*2)
-            return 0
-        else:
-            url = response.json()["output_vad_file_path"]
-            # downalod url wav to dst_path
-            if savepath:
-                wget.download(url, out=os.path.join(savepath,filename+".wav"))
-    except Exception as e:
+    # try:
+    print(payload)
+    response = requests.request("POST", args.url, data=payload, files=files)
+    print(response)
+    if "output_vad_file_path" not in response.json():
         print("!!!!!!!!Error!!!!!!!!"*2)
-        print(e)
+        print(response.json())
         print("!!!!!!!!Error!!!!!!!!"*2)
         return 0
+    else:
+        url = response.json()["output_vad_file_path"]
+        # downalod url wav to dst_path
+        if savepath:
+            wget.download(url, out=os.path.join(savepath,filename+".wav"))
+    # except Exception as e:
+    #     print("!!!!!!!!Error!!!!!!!!"*2)
+    #     print(e)
+    #     print("!!!!!!!!Error!!!!!!!!"*2)
+    #     return 0
     return 1
 
 if __name__ == "__main__":
@@ -62,7 +65,7 @@ if __name__ == "__main__":
                 all_wavs.append(os.path.join(phone_path, file))
     # multi process call get_embedding
     from multiprocessing import Pool
-    pool = Pool(processes=args.total_threads)
+    pool = Pool(processes=args.thread)
     url_list = list(tqdm(pool.imap(get_file, all_wavs), total=len(all_wavs)))
     pool.close()
     pool.join()
