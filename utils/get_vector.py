@@ -15,8 +15,6 @@ import random
 random.seed(1997)
 parser = argparse.ArgumentParser()
 parser.add_argument('--fold_path', type=str, default="/datasets_hdd/datasets/cjsd_embeddings_ecapatdnn_16k", help='Folder for embedding npy files')
-parser.add_argument('--save_path', type=str, default='./vector.bin', help='vector bin save path')
-parser.add_argument('--save_txt_path', type=str, default='./vector.txt', help='vector txt save path')
 parser.add_argument('--save_tiny_folder', type=str, default='./data/temp', help='vector txt save path')
 parser.add_argument('--thread', type=int, default=1, help='')
 # parser.add_argument('--save_txt_path', type=str, default='./vector.txt', help='vector txt save path')
@@ -68,4 +66,3 @@ if __name__ == '__main__':
         pool.close()
         pool.join()
         print(pair_list)
-        print(f"Saved data to {args.save_path}")

@@ -1,4 +1,3 @@
-@@ -0,0 +1,69 @@
 # coding = utf-8
 # @Time    : 2023-05-14  22:17:20
 # @Author  : zhaosheng@nuaa.edu.cn
@@ -12,9 +11,10 @@ parser = argparse.ArgumentParser(description='')
 parser.add_argument('--fold_path', type=str, default='/datasets_hdd/datasets/cjsd_vad_0.1_0.1/',help='After vad data path')
 parser.add_argument('--dst_path', type=str, default="/datasets_hdd/datasets/cjsd_0101_embeddings_ecapatdnn_16k",help='Path for output embedding npy files')
 parser.add_argument('--thread', type=int, default=32,help='Thread number, same as the number of API server')
+parser.add_argument('--emb_type', type=str, default="ECAPATDNN,CAMPP",help='')
 parser.add_argument('--url', type=str, default="http://127.0.0.1:8888/get_embedding/file",help='API server url')
 args = parser.parse_args()
-
+emb_type_list = args.emb_type.split(',')
 def get_embedding(file_path,savepath=args.dst_path):
     """获取该文件的embedding特征
     Args:
@@ -27,22 +27,25 @@ def get_embedding(file_path,savepath=args.dst_path):
     files=[
     ('wav_file',(file_path.split('/')[-1],open(file_path,'rb'),'application/octet-stream'))
     ]
+    if os.path.exists(os.path.join(args.dst_path,filename+"CAMPP"+".npy")):
+        if os.path.exists(os.path.join(args.dst_path,filename+"ECAPATDNN"+".npy")):
+            # print(f"Skip {filename}")
+            return 1
     try:
         response = requests.request("POST", args.url,data=payload, files=files)
-        if "embeddings" not in response.json():
-            print("!!!!!!!!Error!!!!!!!!"*2)
-            print(response.json())
-            print("!!!!!!!!Error!!!!!!!!"*2)
+        # print(response.status_code)
+        if response.status_code != 200:
             return 0
-        else:
-            emb = np.array(response.json()["embeddings"][0]) # shape (len_of_emb,)
-            if savepath:
-                output_path = os.path.join(savepath,filename)
-                np.save(output_path,emb)
+        for emb_type in emb_type_list:
+            
+            if emb_type not in response.json():
+                return 0
+            else:
+                emb = np.array(response.json()[emb_type]) # shape (len_of_emb,)
+                if savepath:
+                    output_path = os.path.join(savepath,filename+emb_type)
+                    np.save(output_path,emb)
     except Exception as e:
-        print("!!!!!!!!Error!!!!!!!!"*2)
-        print(e)
-        print("!!!!!!!!Error!!!!!!!!"*2)
         return 0
     return 1
 
@@ -54,7 +57,6 @@ if __name__ == "__main__":
     all_wavs = []
     for file in os.listdir(args.fold_path):
         if file.endswith(".wav"):
-            print(os.path.join(args.fold_path, file))
             all_wavs.append(os.path.join(args.fold_path, file))
 
     # multi process call get_embedding

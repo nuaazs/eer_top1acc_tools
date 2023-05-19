@@ -5,7 +5,7 @@ EMB_SIZE=192
 api_thread=48
 calc_thread=96
 # 指定目录地址
-a_dir=data/dir_a
+a_dir=/datasets_hdd/datasets/cjsd_download # 待处理音频
 b_dir=data/dir_b
 a_vad_dir=data/dir_a_vad
 b_vad_dir=data/dir_a_vad

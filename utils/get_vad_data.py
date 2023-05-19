@@ -12,7 +12,7 @@ import argparse
 parser = argparse.ArgumentParser(description='')
 parser.add_argument('--fold_path', type=str, default='/datasets_hdd/datasets/cjsd_download',help='Folder of raw wav files')
 parser.add_argument('--dst_path', type=str, default="/datasets_hdd/datasets/cjsd_vad_0.1_0.1",help='Folder to save vad wav files')
-parser.add_argument('--thread', type=int, default=32,help='Thread number, same as the number of API server')
+parser.add_argument('--thread', type=int, default=4,help='Thread number, same as the number of API server')
 parser.add_argument('--url', type=str, default="http://127.0.0.1:8888/test/file",help='API server url')
 args = parser.parse_args()
 
@@ -25,32 +25,32 @@ def get_file(file_path,savepath=args.dst_path):
     """
     # ID format, 视情况修改
     filename = file_path.split('/')[-2]+"_"+file_path.split('/')[-1].split('_')[3]
-    print(file_path)
+    # print(file_path)
     payload={"spkid":str(filename),"only_vad":1}
     files=[
     ('wav_file',(file_path,open(file_path,'rb'),'application/octet-stream'))
     ]
     if os.path.exists(os.path.join(args.dst_path,filename+".wav")):
         return 1
-    # try:
-    print(payload)
-    response = requests.request("POST", args.url, data=payload, files=files)
-    print(response)
-    if "output_vad_file_path" not in response.json():
+    try:
+    # print(payload)
+        response = requests.request("POST", args.url, data=payload, files=files)
+        print(response)
+        if "output_vad_file_path" not in response.json():
+            print("!!!!!!!!Error!!!!!!!!"*2)
+            print(response.json())
+            print("!!!!!!!!Error!!!!!!!!"*2)
+            return 0
+        else:
+            url = response.json()["output_vad_file_path"]
+            # downalod url wav to dst_path
+            if savepath:
+                wget.download(url, out=os.path.join(savepath,filename+".wav"))
+    except Exception as e:
         print("!!!!!!!!Error!!!!!!!!"*2)
-        print(response.json())
+        print(e)
         print("!!!!!!!!Error!!!!!!!!"*2)
         return 0
-    else:
-        url = response.json()["output_vad_file_path"]
-        # downalod url wav to dst_path
-        if savepath:
-            wget.download(url, out=os.path.join(savepath,filename+".wav"))
-    # except Exception as e:
-    #     print("!!!!!!!!Error!!!!!!!!"*2)
-    #     print(e)
-    #     print("!!!!!!!!Error!!!!!!!!"*2)
-    #     return 0
     return 1
 
 if __name__ == "__main__":

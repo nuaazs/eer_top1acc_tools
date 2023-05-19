@@ -17,7 +17,6 @@ calc_thread=20
 #ecapatdnn_0103_female_data
 #ecapatdnn_0103_male_data
 
-
 rootp=ecapatdnn_0103_male_data
 
 
