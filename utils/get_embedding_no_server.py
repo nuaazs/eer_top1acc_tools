@@ -14,10 +14,10 @@ import torchaudio
 from CAMPP import get_embedding
 
 parser = argparse.ArgumentParser(description='')
-parser.add_argument('--fold_path', type=str, default='/home/zhaosheng/get_cjsd_embeddings/data/dir_a_vad_0103',help='After vad data path')
-parser.add_argument('--dst_path', type=str, default="/home/zhaosheng/get_cjsd_embeddings/data/emb_a_0103",help='Path for output embedding npy files')
+parser.add_argument('--fold_path', type=str, default='/datasets_hdd/testdata_cnceleb_wav_16k/male/register',help='After vad data path')
+parser.add_argument('--dst_path', type=str, default="/datasets_hdd/testdata_cnceleb_embedding_16k/male/register",help='Path for output embedding npy files')
 parser.add_argument('--worker_index', type=int, default=1,help='')
-parser.add_argument('--total_workers', type=int, default=80,help='')
+parser.add_argument('--total_workers', type=int, default=1,help='')
 parser.add_argument('--emb_dim', type=int, default=192,help='')
 parser.add_argument('--device', type=str, default="cuda:0",help='')
 args = parser.parse_args()
@@ -43,8 +43,12 @@ def resample(wav,sr,target_sr):
 
 def get_embedding(file_path,savepath):
     filename = file_path.split('/')[-1].split('.')[0]
-    output_path = os.path.join(savepath,filename+"ECAPATDNN"+".npy")
-    output_path2 = os.path.join(savepath,filename+"CAMPP"+".npy")
+    spk_id = file_path.split('/')[-2]
+    output_path = os.path.join(savepath,spk_id,f"{filename.replace('_','')}_ECAPATDNN"+".npy")
+    output_path2 = os.path.join(savepath,spk_id,f"{filename.replace('_','')}_CAMPP"+".npy")
+    # mkdir of output_path
+    os.makedirs(os.path.join(savepath,spk_id),exist_ok=True)
+    # if os.path.exists(output_path):
     if os.path.exists(output_path):
         if os.path.exists(output_path2):
             # print(f"Skip {filename}")
@@ -55,9 +59,10 @@ def get_embedding(file_path,savepath):
     # print(f"fs: {fs}")
     wav=wav.reshape(-1)
     # print("After reshape:",wav.shape)
-    if len(wav)/fs < 10:
-        # print(f"Too short. Length: {len(wav)/fs}")
-        return 0
+    print(f"Length: {len(wav)/fs}")
+    # if len(wav)/fs < 10:
+    #     # print(f"Too short. Length: {len(wav)/fs}")
+    #     return 0
     wav = resample(wav, fs, 16000)
     wav.to(args.device)
     try:
@@ -86,12 +91,16 @@ if __name__ == "__main__":
 
     # get all wavs in args.fold_path, recursive
     all_wavs = []
-    for file in os.listdir(args.fold_path):
-        if file.endswith(".wav"):
-            all_wavs.append(os.path.join(args.fold_path, file))
+
+    for root, dirs, files in os.walk(args.fold_path):
+        for file in files:
+            if file.endswith(".wav"):
+                all_wavs.append(os.path.join(root, file))
+
     all_wavs = sorted(all_wavs)
-    tiny_len = len(all_wavs)//args.total_workers
-    all_wavs = all_wavs[args.worker_index*tiny_len:(args.worker_index+1)*tiny_len]
+    print(f"Total {len(all_wavs)} wavs.")
+    # tiny_len = len(all_wavs)//args.total_workers
+    # all_wavs = all_wavs[args.worker_index*tiny_len:(args.worker_index+1)*tiny_len]
     # multi process call get_embedding
     print(f"Index #{args.worker_index}/{args.total_workers} start. Total {len(all_wavs)} wavs.")
     for file_path in tqdm(all_wavs):

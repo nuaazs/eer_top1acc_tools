@@ -14,8 +14,8 @@ import random
 # set random seed
 random.seed(1997)
 parser = argparse.ArgumentParser()
-parser.add_argument('--fold_path', type=str, default="/datasets_hdd/testdata_cnceleb_embedding/female/test", help='Folder for embedding npy files')
-parser.add_argument('--save_tiny_folder', type=str, default='/datasets_hdd/testdata_cnceleb_bins/female_test', help='')
+parser.add_argument('--fold_path', type=str, default="/datasets_hdd/testdata_cnceleb_embedding_16k/female/test", help='Folder for embedding npy files')
+parser.add_argument('--save_tiny_folder', type=str, default='/datasets_hdd/testdata_cnceleb_bins/female_test_ECAPATDNN_16k', help='')
 parser.add_argument('--model', type=str, default='ECAPATDNN', help='')
 parser.add_argument('--thread', type=int, default=1, help='')
 # parser.add_argument('--save_txt_path', type=str, default='./vector.txt', help='vector txt save path')
@@ -37,11 +37,11 @@ def filelist_to_dict(filelist):
     data_list = []
     id_list = []
     for file in tqdm(filelist):
-        file_name = file.split('/')[-1].split('.')[0]
-        phone = file_name.split('_')[0]
+        file_name = file.split('/')[-1]
+        phone= file.split('/')[-2]
         if phone in phone_list:
             continue
-        data[file_name] = np.load(os.path.join(args.fold_path, file))
+        data[phone+"_"+file_name[:-4].replace('_','').replace('-','')] = np.load(os.path.join(args.fold_path,phone, file))
     for key in data.keys():
         data_list.append(data[key])
         id_list.append(key)
@@ -63,8 +63,16 @@ if __name__ == '__main__':
     # read all npy file from args.fold_path, recursive
     # add to data, key is filename, value is npy data
     data = {}
-    npy_files = sorted([_file for _file in os.listdir(args.fold_path) if ( args.model in _file and _file.endswith(".npy"))])
+    # npy_files = sorted([_file for _file in os.listdir(args.fold_path) if ( args.model in _file and _file.endswith(".npy"))])
+    # find all npy files，recursive
+    npy_files = []
+    for root, dirs, files in os.walk(args.fold_path):
+        for file in files:
+            if args.model in file and file.endswith(".npy"):
+                npy_files.append(os.path.join(root, file))
 
+    print(f"Total {len(npy_files)} files")
+    print(npy_files)
     if args.thread <= 1:
         path_pair = filelist_to_dict(npy_files)
         print(f"Saved data to {path_pair[0]}")
